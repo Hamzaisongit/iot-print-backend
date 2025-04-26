@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const { data: storageData, error: storageError } = await supabase
       .storage
       .from('uploads')
-      .upload(`pending/${Date.now()}-${file.name}`, file)
+      .upload(file.name, '/')
 
     if (storageError) {
       console.error('Storage error:', storageError)
