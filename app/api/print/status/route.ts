@@ -3,17 +3,17 @@ import { createClient } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
-    const { filename, status } = await request.json()
+    const { status } = await request.json()
 
-    if (!filename || !status) {
+    if (!status) {
       return NextResponse.json(
-        { error: 'Filename and status are required' },
+        { error: 'Status is required' },
         { status: 400 }
       )
     }
 
     // Validate status
-    const validStatuses = ['processing', 'completed', 'failed']
+    const validStatuses = ['completed', 'failed']
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status' },
@@ -23,13 +23,39 @@ export async function POST(request: Request) {
 
     const supabase = createClient()
 
+    // List files in processing folder
+    const { data: files, error: listError } = await supabase
+      .storage
+      .from('uploads')
+      .list('processing')
+
+    if (listError) {
+      console.error('List error:', listError)
+      return NextResponse.json(
+        { error: 'Failed to list processing files' },
+        { status: 500 }
+      )
+    }
+
+    if (!files || files.length === 0) {
+      return NextResponse.json(
+        { message: 'No files in processing' },
+        { status: 404 }
+      )
+    }
+
+    // Get the most recent file
+    const mostRecentFile = files.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0]
+
     // Move file to appropriate folder based on status
     const { error: moveError } = await supabase
       .storage
       .from('uploads')
       .move(
-        `processing/${filename}`,
-        `${status}/${filename}`
+        `processing/${mostRecentFile.name}`,
+        `${status}/${mostRecentFile.name}`
       )
 
     if (moveError) {
@@ -41,7 +67,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: 'File status updated successfully'
+      message: 'File status updated successfully',
+      file: mostRecentFile
     })
 
   } catch (error) {

@@ -16,11 +16,11 @@ export async function POST(request: Request) {
     // Initialize Supabase client
     const supabase = createClient()
 
-    // Upload file to Supabase storage
+    // Upload file to Supabase storage in the pending folder
     const { data: storageData, error: storageError } = await supabase
       .storage
       .from('uploads')
-      .upload(file.name, '/')
+      .upload(`pending/${Date.now()}-${file.name}`, file)
 
     if (storageError) {
       console.error('Storage error:', storageError)
